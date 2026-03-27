@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Simulasi Manajer Toko Paman</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -12,28 +12,274 @@
         #game-container { 
             width: 100vw; height: 100vh; 
             background-size: cover; background-position: center; 
-            display: flex; flex-direction: column; justify-content: flex-end; align-items: center; 
+            display: flex; flex-direction: column; 
+            justify-content: flex-end; /* Dorong konten ke bawah */
+            align-items: center; 
+            padding-bottom: 50px; /* NAIKIN SEMUA KONTEN DIALOG KE ATAS */
             transition: background-image 0.5s ease-in-out; 
         }
         
-        #stats { position: absolute; top: 15px; width: 90%; display: flex; justify-content: space-between; z-index: 10; }
-        .stat-item { background: rgba(0,0,0,0.7); padding: 8px 15px; border: 1px solid #fff; border-radius: 20px; color: white; font-size: 0.9em; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
+        #stats { 
+            position: absolute; 
+            top: 25px; 
+            width: 90%; 
+            display: flex; 
+            justify-content: space-between; 
+            z-index: 10; 
+        }
+        .stat-item { 
+            background: rgba(0,0,0,0.8); 
+            padding: 8px 15px; 
+            border: 1px solid #fff; 
+            border-radius: 20px; 
+            color: white; 
+            font-size: 0.8em; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5); 
+        }
         
         #dialog-box { 
-            width: 95%; max-width: 600px; margin-bottom: 25px; 
-            background: rgba(0, 0, 0, 0.9); border: 2px solid #fff; border-radius: 12px; 
-            padding: 15px; color: white; position: relative; 
-            display: flex; align-items: center; gap: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            width: 95%; 
+            max-width: 600px; 
+            background: rgba(0, 0, 0, 0.95); 
+            border: 2px solid #fff; 
+            border-radius: 12px; 
+            padding: 12px; 
+            color: white; 
+            position: relative; 
+            display: flex; 
+            align-items: flex-start; 
+            gap: 12px;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.8);
+            min-height: 170px; /* Biar tinggi box stabil */
         }
 
         #karakter-dialog {
-            width: 120px; height: 120px; 
+            width: 100px; height: 100px; 
             border: 3px solid #ffcc00; 
             border-radius: 8px;
             background-repeat: no-repeat;
             flex-shrink: 0;
             display: none;
+            background-color: #333;
+            image-rendering: pixelated;
+        }
+        
+        #teks-kontainer { flex-grow: 1; overflow: hidden; }
+        #nama-npc { 
+            position: absolute; 
+            top: -12px; 
+            left: 20px; 
+            background: #ffcc00; 
+            color: #000; 
+            padding: 2px 15px; 
+            font-weight: bold; 
+            border-radius: 4px; 
+            font-size: 0.8em; 
+            border: 1px solid #fff; 
+            z-index: 5; 
+        }
+        
+        #teks-soal { 
+            font-size: 0.9em; 
+            line-height: 1.4; 
+            max-height: 65px; /* BATASI TINGGI AGAR TIDAK DORONG TOMBOL */
+            overflow-y: auto; /* BIAR BISA DI-SCROLL KALAU SOAL PANJANG */
+            margin-bottom: 10px; 
+            padding-right: 5px;
+        }
+        
+        #area-tombol { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 8px; 
+        }
+
+        .btn-jawaban { 
+            background: rgba(255,255,255,0.1); 
+            color: #fff; 
+            border: 1px solid #fff; 
+            padding: 12px 5px; 
+            font-size: 0.8em; 
+            cursor: pointer; 
+            border-radius: 6px; 
+            transition: 0.2s; 
+            text-align: center; 
+        }
+        .btn-jawaban:active { background: #ffcc00; color: #000; font-weight: bold; }
+
+        #overlay-cerita { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; color: white; text-align: center; padding: 25px; }
+        .box-cerita { max-width: 450px; border: 2px solid #ffcc00; padding: 35px; border-radius: 15px; background: #111; }
+        .btn-lanjut { margin-top: 25px; padding: 12px 35px; background: #ffcc00; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="stats">
+            <div class="stat-item" id="display-darah">❤️ ❤️ ❤️ ❤️ ❤️</div>
+            <div class="stat-item" id="display-koin">💰 Koin: 0</div>
+        </div>
+        <div id="dialog-box">
+            <div id="karakter-dialog"></div>
+            <div id="teks-kontainer">
+                <div id="nama-npc">Sistem</div>
+                <div id="teks-soal">Memuat simulasi...</div>
+                <div id="area-tombol"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="overlay-cerita">
+        <div class="box-cerita">
+            <h2 id="judul-cerita" style="color:#ffcc00;">SELAMAT DATANG</h2>
+            <p id="isi-cerita">Bantu Paman mengelola toko hari ini. Klik tombol di bawah untuk mulai!</p>
+            <button class="btn-lanjut" onclick="tutupOverlay()">MULAI KERJA</button>
+        </div>
+    </div>
+
+    <script>
+        const bgKasir = "https://i.postimg.cc/85TkDmZ0/Pixel-Art-Minimarket-Checkout-View-1774418808098.jpg";
+        const bgGudang = "https://i.postimg.cc/sDPdp7Ww/Cozy-Pixel-Minimarket-Storage-Room-1774504255801.jpg";
+        const bgRenovasi = "https://i.postimg.cc/nzv5xtnp/Pixel-Night-Construction-Minimarket-Warehouse-Extension-1774499750414.jpg";
+        const soundKaching = new Audio("https://www.soundjay.com/misc/sounds/cash-register-05.mp3");
+
+        const linkKarakter = {
+            "Ibu Kompleks": "https://i.postimg.cc/Kj80jm4G/Screenshot-20260326-144536-Gallery.jpg",
+            "Anak Sekolah": "https://i.postimg.cc/L83P70zP/Screenshot-20260326-144417-Gallery.jpg",
+            "Mbak Kantoran": "https://i.postimg.cc/dtvrBYC3/Screenshot-20260326-144451-Gallery.jpg",
+            "Bapak Martabak": "https://i.postimg.cc/VLGvCQBK/Screenshot-20260326-164618-Photo-Editor.jpg",
+            "Barista": "https://i.postimg.cc/0yR3ZrfG/Screenshot-20260326-144526-Gallery.jpg",
+            "Mas Kurir": "https://i.postimg.cc/0Q7sxQvP/Indonesian-Character-Selection-Martabak-Kurir-Sopir-1774518306858.jpg", 
+            "Sopir Beras": "https://i.postimg.cc/YCrPTZ5S/Screenshot-20260326-164616-Photo-Editor.jpg",
+            "Paman": "https://i.postimg.cc/pX68tn7F/Screenshot-20260326-144502-Gallery.jpg",
+            "Bang Kuli": "https://i.postimg.cc/fbKRDGL9/Toko-Paman-Pixel-Art-Character-Line-up-1774510794949.jpg"
+        };
+
+        const daftarSoal = [
+            { npc: "Ibu Kompleks", soal: "Membeli 4 botol sirup Rp12.500/botol dan 2 kg gula Rp14.000/kg. Bayar Rp100.000, berapa kembaliannya?", opsi: ["Rp18.000", "Rp22.000", "Rp28.000", "Rp32.000"], benar: "Rp28.000" },
+            { npc: "Anak Sekolah", soal: "Harga makanan ringan Rp120.000. Diskon 20% dan voucer Rp5.000. Total yang harus dibayar?", opsi: ["Rp91.000", "Rp96.000", "Rp101.000", "Rp89.000"], benar: "Rp91.000" },
+            { npc: "Mbak Kantoran", soal: "Harga satu lusin pulpen Rp36.000. Jika beli 5 buah pulpen, berapa harganya?", opsi: ["Rp12.000", "Rp15.000", "Rp18.000", "Rp20.000"], benar: "Rp15.000" },
+            { npc: "Bapak Martabak", soal: "Berat kotor telur 25 kg, tara 4%. Harga telur Rp25.000/kg. Berapa total harga bersihnya?", opsi: ["Rp600.000", "Rp575.000", "Rp625.000", "Rp500.000"], benar: "Rp600.000" },
+            { npc: "Barista", soal: "Rasio sirup dan air 2:7. Untuk minuman 540 ml, berapa volume sirup yang diperlukan?", opsi: ["100 ml", "120 ml", "140 ml", "180 ml"], benar: "120 ml" },
+            { npc: "Paman", soal: "Barang Rp200.000 dijual rugi 15%. Berapakah harga jualnya?", opsi: ["Rp170.000", "Rp175.000", "Rp185.000", "Rp160.000"], benar: "Rp170.000" },
+            { npc: "Paman", soal: "Tinggi rak di denah 5 cm, aslinya 2 meter. Berapakah skala denah tersebut?", opsi: ["1:20", "1:40", "1:400", "1:2.000"], benar: "1:40" },
+            { npc: "Paman", soal: "15 paket butuh 3 liter bensin. Berapa liter untuk kirim 55 paket?", opsi: ["11 Liter", "12 Liter", "15 Liter", "9 Liter"], benar: "11 Liter" },
+            { npc: "Mas Kurir", soal: "Jarak peta 12 cm, skala 1:250.000. Bensin 1 liter per 20 km. Berapa bensin yang dibutuhkan?", opsi: ["1 Liter", "1,5 Liter", "2 Liter", "2,5 Liter"], benar: "1,5 Liter" },
+            { npc: "Sopir Beras", soal: "Harga 3,5 kg beras Rp49.000. Berapakah harga untuk 7,5 kg beras?", opsi: ["Rp98.000", "Rp105.000", "Rp110.000", "Rp100.000"], benar: "Rp105.000" },
+            { npc: "Paman", soal: "Pakan 40 ayam cukup 15 hari. Jika ayam jadi 60 ekor, berapa hari pakan habis?", opsi: ["8 hari", "10 hari", "12 hari", "9 hari"], benar: "10 hari" },
+            { npc: "Paman", soal: "3 mesin butuh 20 menit. Jika hanya ada 2 mesin, berapa menit yang dibutuhkan?", opsi: ["25 menit", "30 menit", "40 menit", "35 menit"], benar: "30 menit" },
+            { npc: "Bang Kuli", soal: "Selesai 30 hari oleh 10 orang. Jika ingin selesai 12 hari, berapa pekerja dibutuhkan?", opsi: ["20 orang", "25 orang", "30 orang", "15 orang"], benar: "25 orang" },
+            { npc: "Bang Kuli", soal: "Kecepatan 80 km/jam butuh 45 menit. Jika kecepatan 60 km/jam, berapa waktunya?", opsi: ["55 menit", "60 menit", "75 menit", "50 menit"], benar: "60 menit" },
+            { npc: "Bang Kuli", soal: "Proyek 20 hari oleh 15 orang. Berhenti 4 hari setelah kerja 8 hari. Berapa tambahan pekerjanya?", opsi: ["7 orang", "10 orang", "15 orang", "5 orang"], benar: "10 orang" }
+        ];
+
+        let soalSekarang = 0, koin = 0, darah = 5, nextAction = null, typingTimer;
+
+        function tutupOverlay() {
+            document.getElementById('overlay-cerita').style.display = 'none';
+            if (nextAction) nextAction();
+        }
+
+        function ketikTeks(targetId, teks, kecepatan = 25) {
+            let i = 0;
+            const elemen = document.getElementById(targetId);
+            elemen.innerHTML = "";
+            clearInterval(typingTimer);
+            typingTimer = setInterval(() => {
+                if (i < teks.length) { elemen.innerHTML += teks.charAt(i); i++; }
+                else { clearInterval(typingTimer); }
+            }, kecepatan);
+        }
+
+        function updateBackground() {
+            const cont = document.getElementById('game-container');
+            if (soalSekarang < 4) cont.style.backgroundImage = `url('${bgKasir}')`;
+            else if (soalSekarang < 8) cont.style.backgroundImage = `url('${bgGudang}')`;
+            else if (soalSekarang < 12) cont.style.backgroundImage = `url('${bgKasir}')`;
+            else cont.style.backgroundImage = `url('${bgRenovasi}')`;
+        }
+
+        function renderGame() {
+            updateBackground();
+            const data = daftarSoal[soalSekarang];
+            const elemenKarakter = document.getElementById('karakter-dialog');
+            document.getElementById('nama-npc').innerText = data.npc;
+            
+            if (linkKarakter[data.npc]) {
+                elemenKarakter.style.backgroundImage = `url('${linkKarakter[data.npc]}')`;
+                elemenKarakter.style.display = 'block';
+                
+                if (data.npc === "Bang Kuli") {
+                    elemenKarakter.style.backgroundSize = "200%"; 
+                    elemenKarakter.style.backgroundPosition = "43% 5%";
+                } else if (data.npc === "Mas Kurir") {
+                    elemenKarakter.style.backgroundSize = "115%"; 
+                    elemenKarakter.style.backgroundPosition = "center 15%"; 
+                } else {
+                    elemenKarakter.style.backgroundSize = "cover";
+                    elemenKarakter.style.backgroundPosition = "top center";
+                }
+            } else {
+                elemenKarakter.style.display = 'none';
+            }
+
+            ketikTeks('teks-soal', data.soal);
+
+            let pilihanAcak = [...data.opsi];
+            pilihanAcak.sort(() => Math.random() - 0.5);
+
+            const area = document.getElementById('area-tombol'); 
+            area.innerHTML = "";
+            pilihanAcak.forEach((teks) => {
+                const b = document.createElement('button'); 
+                b.className = "btn-jawaban"; 
+                b.innerText = teks;
+                b.onclick = () => { soundKaching.currentTime=0; soundKaching.play(); cekJawaban(teks); };
+                area.appendChild(b);
+            });
+        }
+
+        function cekJawaban(jawabanDipilih) {
+            const jawabanBenar = daftarSoal[soalSekarang].benar;
+            if (jawabanDipilih === jawabanBenar) {
+                confetti({ particleCount: 100, origin: { y: 0.8 } });
+                koin += 1000; 
+                document.getElementById('display-koin').innerText = "💰 Koin: " + koin; 
+                soalSekarang++;
+                if (soalSekarang >= daftarSoal.length) { 
+                    tampilkanPesan("SELESAI", "Luar biasa! Seluruh tugas selesai.", () => location.reload()); 
+                }
+                else if (soalSekarang == 4) { tampilkanPesan("GUDANG", "Mari cek stok barang di gudang.", renderGame); }
+                else if (soalSekarang == 8) { tampilkanPesan("KASIR", "Antrean ramai! Kembali ke depan.", renderGame); }
+                else if (soalSekarang == 12) { tampilkanPesan("RENOVASI", "Waktunya bantu renovasi gudang.", renderGame); }
+                else renderGame();
+            } else {
+                darah--; updateDarah();
+                if (darah <= 0) { tampilkanPesan("GAME OVER", "Paman sangat kecewa!", () => location.reload()); }
+                else { tampilkanPesan("SALAH!", "Pelanggan jadi bingung nih.", renderGame); }
+            }
+        }
+
+        function tampilkanPesan(judul, isi, aksi) {
+            document.getElementById('karakter-dialog').style.display = 'none';
+            document.getElementById('judul-cerita').innerText = judul;
+            document.getElementById('isi-cerita').innerText = isi;
+            document.getElementById('overlay-cerita').style.display = 'flex';
+            nextAction = aksi;
+        }
+
+        function updateDarah() {
+            let h = ""; for(let i=0; i<5; i++) h += (i < darah) ? "❤️ " : "🖤 ";
+            document.getElementById('display-darah').innerText = h;
+        }
+
+        window.onload = () => { 
+            document.getElementById('overlay-cerita').style.display = 'flex'; 
+            nextAction = renderGame; 
+        };
+    </script>
+</body>
+</html>
             background-color: #333;
             image-rendering: pixelated; /* Menjaga kualitas pixel art tetap tajam */
         }
